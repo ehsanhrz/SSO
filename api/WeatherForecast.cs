@@ -1,4 +1,4 @@
-namespace SSO
+namespace api
 {
     public class WeatherForecast
     {

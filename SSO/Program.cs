@@ -1,25 +1,122 @@
+using Microsoft.AspNetCore.Identity;
+using SSO.Infrastructure.Database;
+using SSO.Infrastructure.Database.Models;
+using Quartz;
+using static OpenIddict.Abstractions.OpenIddictConstants;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+
+builder.Services.InstallAllFeatures(builder.Configuration);
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
 builder.Services.AddMvc();
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    // Configure the context to use Microsoft SQL Server.
-    options.UseSqlite($"Filename={Path.Combine(Path.GetTempPath(), "openiddict-sandbox-aspnetcore-server.sqlite3")}");
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
 
-    // Register the entity sets needed by OpenIddict.
-    // Note: use the generic overload if you need
-    // to replace the default OpenIddict entities.
-    options.UseOpenIddict();
+builder.Services.AddQuartz(options =>
+{
+    options.UseSimpleTypeLoader();
+    options.UseInMemoryStore();
 });
+
+
+builder.Services.AddOpenIddict()
+
+            
+            .AddCore(options =>
+            {
+                options.UseEntityFrameworkCore()
+                       .UseDbContext<AppDbContext>();
+                options.UseQuartz();
+            })
+
+            
+            .AddClient(options =>
+            {
+                
+                options.AllowAuthorizationCodeFlow();
+                
+                options.AddDevelopmentEncryptionCertificate()
+                       .AddDevelopmentSigningCertificate();
+                
+                options.UseAspNetCore()
+                       .EnableStatusCodePagesIntegration()
+                       .EnableRedirectionEndpointPassthrough();
+
+                options.UseSystemNetHttp()
+                       .SetProductInformation(typeof(Program).Assembly);
+
+                
+            })
+
+            
+            .AddServer(options =>
+            {
+                
+                options.SetAuthorizationEndpointUris("connect/authorize")
+                       .SetDeviceEndpointUris("connect/device")
+                       .SetIntrospectionEndpointUris("connect/introspect")
+                       .SetLogoutEndpointUris("connect/logout")
+                       .SetRevocationEndpointUris("connect/revoke")
+                       .SetTokenEndpointUris("connect/token")
+                       .SetUserinfoEndpointUris("connect/userinfo")
+                       .SetVerificationEndpointUris("connect/verify");
+
+                
+                options.AllowAuthorizationCodeFlow()
+                       .AllowDeviceCodeFlow()
+                       .AllowPasswordFlow()
+                       .AllowRefreshTokenFlow();
+
+                
+                options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);
+
+                
+                options.AddDevelopmentEncryptionCertificate()
+                       .AddDevelopmentSigningCertificate();
+
+                
+                options.RequireProofKeyForCodeExchange();
+
+                
+                options.UseAspNetCore()
+                       .EnableStatusCodePagesIntegration()
+                       .EnableAuthorizationEndpointPassthrough()
+                       .EnableLogoutEndpointPassthrough()
+                       .EnableTokenEndpointPassthrough()
+                       .EnableUserinfoEndpointPassthrough()
+                       .EnableVerificationEndpointPassthrough();
+
+                
+            })
+
+            // Register the OpenIddict validation components.
+            .AddValidation(options =>
+            {
+                // Configure the audience accepted by this resource server.
+                // The value MUST match the audience associated with the
+                // "demo_api" scope, which is used by ResourceController.
+                options.AddAudiences("resource_server");
+
+                // Import the configuration from the local OpenIddict server instance.
+                options.UseLocalServer();
+
+                
+
+                // Register the ASP.NET Core host.
+                options.UseAspNetCore();
+
+                
+
+            });
 
 var app = builder.Build();
 

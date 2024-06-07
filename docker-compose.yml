@@ -21,7 +21,14 @@ services:
     ports:
       - "6379:6379"
 
+  api:
+    image: ${DOCKER_REGISTRY-}api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+
 volumes:
   postgres_data: {}
   redis_data: {}
+
 
