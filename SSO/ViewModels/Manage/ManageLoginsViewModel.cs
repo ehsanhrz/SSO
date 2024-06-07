@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Manage;
+namespace SSO.ViewModels.Manage;
 
 public class ManageLoginsViewModel
 {

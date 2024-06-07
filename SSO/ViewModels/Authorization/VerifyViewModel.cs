@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using OpenIddict.Abstractions;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Authorization;
+namespace SSO.ViewModels.Authorization;
 
 public class VerifyViewModel
 {

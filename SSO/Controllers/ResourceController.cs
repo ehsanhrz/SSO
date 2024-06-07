@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
-using OpenIddict.Sandbox.AspNetCore.Server.Models;
 using OpenIddict.Validation.AspNetCore;
+using SSO.Infrastructure.Database.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace OpenIddict.Sandbox.AspNetCore.Server.Controllers;

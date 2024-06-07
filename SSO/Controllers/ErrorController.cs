@@ -6,7 +6,7 @@
 
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Shared;
+using SSO.ViewModels.Shared;
 
 namespace OpenIddict.Sandbox.AspNetCore.Server;
 

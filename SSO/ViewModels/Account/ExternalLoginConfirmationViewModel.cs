@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Account;
+namespace SSO.ViewModels.Account;
 
 public class ExternalLoginConfirmationViewModel
 {

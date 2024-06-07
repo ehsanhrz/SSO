@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Account;
+namespace SSO.ViewModels.Account;
 
 public class SendCodeViewModel
 {

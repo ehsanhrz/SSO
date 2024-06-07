@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Manage;
+namespace SSO.ViewModels.Manage;
 
 public class ConfigureTwoFactorViewModel
 {

@@ -3,6 +3,7 @@ using SSO.Infrastructure.Database;
 using SSO.Infrastructure.Database.Models;
 using Quartz;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using SSO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +38,7 @@ builder.Services.AddOpenIddict()
                        .UseDbContext<AppDbContext>();
                 options.UseQuartz();
             })
-
+            
             
             .AddClient(options =>
             {
@@ -95,7 +96,6 @@ builder.Services.AddOpenIddict()
                        .EnableUserinfoEndpointPassthrough()
                        .EnableVerificationEndpointPassthrough();
 
-                
             })
 
             // Register the OpenIddict validation components.
@@ -118,6 +118,8 @@ builder.Services.AddOpenIddict()
 
             });
 
+builder.Services.AddHostedService<Worker>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -129,6 +131,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

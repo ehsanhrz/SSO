@@ -1,10 +1,4 @@
-﻿/*
- * Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
- * See https://github.com/openiddict/openiddict-core for more information concerning
- * the license and the contributors participating to this project.
- */
-
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.Security.Claims;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
@@ -16,22 +10,22 @@ using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Client;
 using OpenIddict.Client.AspNetCore;
-using OpenIddict.Sandbox.AspNetCore.Server.Helpers;
-using OpenIddict.Sandbox.AspNetCore.Server.Models;
-using OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Authorization;
+using SSO.ViewModels.Authorization;
 using OpenIddict.Server.AspNetCore;
+using SSO.Infrastructure.Database.Models;
+using SSO.Utils;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace OpenIddict.Sandbox.AspNetCore.Server;
 
 public class AuthorizationController : Controller
 {
-    private readonly IOpenIddictApplicationManager _applicationManager;
-    private readonly IOpenIddictAuthorizationManager _authorizationManager;
-    private readonly OpenIddictClientService _clientService;
-    private readonly IOpenIddictScopeManager _scopeManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IOpenIddictApplicationManager applicationManager;
+    private readonly IOpenIddictAuthorizationManager authorizationManager;
+    private readonly OpenIddictClientService clientService;
+    private readonly IOpenIddictScopeManager scopeManager;
+    private readonly SignInManager<ApplicationUser> signInManager;
+    private readonly UserManager<ApplicationUser> userManager;
 
     public AuthorizationController(
         IOpenIddictApplicationManager applicationManager,
@@ -41,12 +35,12 @@ public class AuthorizationController : Controller
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager)
     {
-        _applicationManager = applicationManager;
-        _authorizationManager = authorizationManager;
-        _clientService = clientService;
-        _scopeManager = scopeManager;
-        _signInManager = signInManager;
-        _userManager = userManager;
+        this.applicationManager = applicationManager;
+        this.authorizationManager = authorizationManager;
+        this.clientService = clientService;
+        this.scopeManager = scopeManager;
+        this.signInManager = signInManager;
+        this.userManager = userManager;
     }
 
     #region Authorization code, implicit and hybrid flows
@@ -102,7 +96,7 @@ public class AuthorizationController : Controller
             // that will be used to authenticate the user, the identity_provider parameter can be used for that.
             if (!string.IsNullOrEmpty(request.IdentityProvider))
             {
-                var registrations = await _clientService.GetClientRegistrationsAsync();
+                var registrations = await clientService.GetClientRegistrationsAsync();
                 if (!registrations.Any(registration => string.Equals(registration.ProviderName,
                     request.IdentityProvider, StringComparison.Ordinal)))
                 {
@@ -116,7 +110,7 @@ public class AuthorizationController : Controller
                         }));
                 }
 
-                var properties = _signInManager.ConfigureExternalAuthenticationProperties(
+                var properties = signInManager.ConfigureExternalAuthenticationProperties(
                     provider: request.IdentityProvider,
                     redirectUrl: Url.Action("ExternalLoginCallback", "Account", new
                     {
@@ -140,22 +134,22 @@ public class AuthorizationController : Controller
         }
 
         // Retrieve the profile of the logged in user.
-        var user = await _userManager.GetUserAsync(result.Principal) ??
+        var user = await userManager.GetUserAsync(result.Principal) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
         // Retrieve the application details from the database.
-        var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
+        var application = await applicationManager.FindByClientIdAsync(request.ClientId) ??
             throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
         // Retrieve the permanent authorizations associated with the user and the calling client application.
-        var authorizations = await _authorizationManager.FindAsync(
-            subject: await _userManager.GetUserIdAsync(user),
-            client : await _applicationManager.GetIdAsync(application),
+        var authorizations = await authorizationManager.FindAsync(
+            subject: await userManager.GetUserIdAsync(user),
+            client : await applicationManager.GetIdAsync(application),
             status : Statuses.Valid,
             type   : AuthorizationTypes.Permanent,
             scopes : request.GetScopes()).ToListAsync();
 
-        switch (await _applicationManager.GetConsentTypeAsync(application))
+        switch (await applicationManager.GetConsentTypeAsync(application))
         {
             // If the consent is external (e.g when authorizations are granted by a sysadmin),
             // immediately return an error if no authorization can be found in the database.
@@ -181,29 +175,29 @@ public class AuthorizationController : Controller
                     roleType: Claims.Role);
 
                 // Add the claims that will be persisted in the tokens.
-                identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                        .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                        .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                        .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                        .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+                identity.SetClaim(Claims.Subject, await userManager.GetUserIdAsync(user))
+                        .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
+                        .SetClaim(Claims.Name, await userManager.GetUserNameAsync(user))
+                        .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+                        .SetClaims(Claims.Role, (await userManager.GetRolesAsync(user)).ToImmutableArray());
 
                 // Note: in this sample, the granted scopes match the requested scope
                 // but you may want to allow the user to uncheck specific scopes.
                 // For that, simply restrict the list of scopes before calling SetScopes.
                 identity.SetScopes(request.GetScopes());
-                identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+                identity.SetResources(await scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
 
                 // Automatically create a permanent authorization to avoid requiring explicit consent
                 // for future authorization or token requests containing the same scopes.
                 var authorization = authorizations.LastOrDefault();
-                authorization ??= await _authorizationManager.CreateAsync(
+                authorization ??= await authorizationManager.CreateAsync(
                     identity: identity,
-                    subject : await _userManager.GetUserIdAsync(user),
-                    client  : await _applicationManager.GetIdAsync(application),
+                    subject : await userManager.GetUserIdAsync(user),
+                    client  : await applicationManager.GetIdAsync(application),
                     type    : AuthorizationTypes.Permanent,
                     scopes  : identity.GetScopes());
 
-                identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
+                identity.SetAuthorizationId(await authorizationManager.GetIdAsync(authorization));
                 identity.SetDestinations(GetDestinations);
 
                 return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -224,7 +218,7 @@ public class AuthorizationController : Controller
             // In every other case, render the consent form.
             default: return View(new AuthorizeViewModel
             {
-                ApplicationName = await _applicationManager.GetLocalizedDisplayNameAsync(application),
+                ApplicationName = await applicationManager.GetLocalizedDisplayNameAsync(application),
                 Scope = request.Scope
             });
         }
@@ -238,17 +232,17 @@ public class AuthorizationController : Controller
             throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
         // Retrieve the profile of the logged in user.
-        var user = await _userManager.GetUserAsync(User) ??
+        var user = await userManager.GetUserAsync(User) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
         // Retrieve the application details from the database.
-        var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
+        var application = await applicationManager.FindByClientIdAsync(request.ClientId) ??
             throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
         // Retrieve the permanent authorizations associated with the user and the calling client application.
-        var authorizations = await _authorizationManager.FindAsync(
-            subject: await _userManager.GetUserIdAsync(user),
-            client : await _applicationManager.GetIdAsync(application),
+        var authorizations = await authorizationManager.FindAsync(
+            subject: await userManager.GetUserIdAsync(user),
+            client : await applicationManager.GetIdAsync(application),
             status : Statuses.Valid,
             type   : AuthorizationTypes.Permanent,
             scopes : request.GetScopes()).ToListAsync();
@@ -256,7 +250,7 @@ public class AuthorizationController : Controller
         // Note: the same check is already made in the other action but is repeated
         // here to ensure a malicious user can't abuse this POST-only endpoint and
         // force it to return a valid response without the external authorization.
-        if (authorizations.Count is 0 && await _applicationManager.HasConsentTypeAsync(application, ConsentTypes.External))
+        if (authorizations.Count is 0 && await applicationManager.HasConsentTypeAsync(application, ConsentTypes.External))
         {
             return Forbid(
                 authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -275,29 +269,29 @@ public class AuthorizationController : Controller
             roleType: Claims.Role);
 
         // Add the claims that will be persisted in the tokens.
-        identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+        identity.SetClaim(Claims.Subject, await userManager.GetUserIdAsync(user))
+                .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
+                .SetClaim(Claims.Name, await userManager.GetUserNameAsync(user))
+                .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+                .SetClaims(Claims.Role, (await userManager.GetRolesAsync(user)).ToImmutableArray());
 
         // Note: in this sample, the granted scopes match the requested scope
         // but you may want to allow the user to uncheck specific scopes.
         // For that, simply restrict the list of scopes before calling SetScopes.
         identity.SetScopes(request.GetScopes());
-        identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+        identity.SetResources(await scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
 
         // Automatically create a permanent authorization to avoid requiring explicit consent
         // for future authorization or token requests containing the same scopes.
         var authorization = authorizations.LastOrDefault();
-        authorization ??= await _authorizationManager.CreateAsync(
+        authorization ??= await authorizationManager.CreateAsync(
             identity: identity,
-            subject : await _userManager.GetUserIdAsync(user),
-            client  : await _applicationManager.GetIdAsync(application),
+            subject : await userManager.GetUserIdAsync(user),
+            client  : await applicationManager.GetIdAsync(application),
             type    : AuthorizationTypes.Permanent,
             scopes  : identity.GetScopes());
 
-        identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
+        identity.SetAuthorizationId(await authorizationManager.GetIdAsync(authorization));
         identity.SetDestinations(GetDestinations);
 
         // Returning a SignInResult will ask OpenIddict to issue the appropriate access/identity tokens.
@@ -321,13 +315,13 @@ public class AuthorizationController : Controller
         if (result.Succeeded && !string.IsNullOrEmpty(result.Principal.GetClaim(Claims.ClientId)))
         {
             // Retrieve the application details from the database using the client_id stored in the principal.
-            var application = await _applicationManager.FindByClientIdAsync(result.Principal.GetClaim(Claims.ClientId)) ??
+            var application = await applicationManager.FindByClientIdAsync(result.Principal.GetClaim(Claims.ClientId)) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
             // Render a form asking the user to confirm the authorization demand.
             return View(new VerifyViewModel
             {
-                ApplicationName = await _applicationManager.GetLocalizedDisplayNameAsync(application),
+                ApplicationName = await applicationManager.GetLocalizedDisplayNameAsync(application),
                 Scope = string.Join(" ", result.Principal.GetScopes()),
                 UserCode = result.Properties.GetTokenValue(OpenIddictServerAspNetCoreConstants.Tokens.UserCode)
             });
@@ -353,7 +347,7 @@ public class AuthorizationController : Controller
     public async Task<IActionResult> VerifyAccept()
     {
         // Retrieve the profile of the logged in user.
-        var user = await _userManager.GetUserAsync(User) ??
+        var user = await userManager.GetUserAsync(User) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
         // Retrieve the claims principal associated with the user code.
@@ -367,17 +361,17 @@ public class AuthorizationController : Controller
                 roleType: Claims.Role);
 
             // Add the claims that will be persisted in the tokens.
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+            identity.SetClaim(Claims.Subject, await userManager.GetUserIdAsync(user))
+                    .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
+                    .SetClaim(Claims.Name, await userManager.GetUserNameAsync(user))
+                    .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+                    .SetClaims(Claims.Role, (await userManager.GetRolesAsync(user)).ToImmutableArray());
 
             // Note: in this sample, the granted scopes match the requested scope
             // but you may want to allow the user to uncheck specific scopes.
             // For that, simply restrict the list of scopes before calling SetScopes.
             identity.SetScopes(result.Principal.GetScopes());
-            identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+            identity.SetResources(await scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
             identity.SetDestinations(GetDestinations);
 
             var properties = new AuthenticationProperties
@@ -424,7 +418,7 @@ public class AuthorizationController : Controller
         // Ask ASP.NET Core Identity to delete the local and external cookies created
         // when the user agent is redirected from the external identity provider
         // after a successful authentication flow (e.g Google or Facebook).
-        await _signInManager.SignOutAsync();
+        await signInManager.SignOutAsync();
 
         // Returning a SignOutResult will ask OpenIddict to redirect the user agent
         // to the post_logout_redirect_uri specified by the client application or to
@@ -450,7 +444,7 @@ public class AuthorizationController : Controller
 
         if (request.IsPasswordGrantType())
         {
-            var user = await _userManager.FindByNameAsync(request.Username);
+            var user = await userManager.FindByNameAsync(request.Username);
             if (user is null)
             {
                 return Forbid(
@@ -463,7 +457,7 @@ public class AuthorizationController : Controller
             }
 
             // Validate the username/password parameters and ensure the account is not locked out.
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
             if (!result.Succeeded)
             {
                 return Forbid(
@@ -482,17 +476,17 @@ public class AuthorizationController : Controller
                 roleType: Claims.Role);
 
             // Add the claims that will be persisted in the tokens.
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+            identity.SetClaim(Claims.Subject, await userManager.GetUserIdAsync(user))
+                    .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
+                    .SetClaim(Claims.Name, await userManager.GetUserNameAsync(user))
+                    .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+                    .SetClaims(Claims.Role, (await userManager.GetRolesAsync(user)).ToImmutableArray());
 
             // Note: in this sample, the granted scopes match the requested scope
             // but you may want to allow the user to uncheck specific scopes.
             // For that, simply restrict the list of scopes before calling SetScopes.
             identity.SetScopes(request.GetScopes());
-            identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+            identity.SetResources(await scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
             identity.SetDestinations(GetDestinations);
 
             // Returning a SignInResult will ask OpenIddict to issue the appropriate access/identity tokens.
@@ -505,7 +499,7 @@ public class AuthorizationController : Controller
             var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
             // Retrieve the user profile corresponding to the authorization code/refresh token.
-            var user = await _userManager.FindByIdAsync(result.Principal.GetClaim(Claims.Subject));
+            var user = await userManager.FindByIdAsync(result.Principal.GetClaim(Claims.Subject));
             if (user is null)
             {
                 return Forbid(
@@ -518,7 +512,7 @@ public class AuthorizationController : Controller
             }
 
             // Ensure the user is still allowed to sign in.
-            if (!await _signInManager.CanSignInAsync(user))
+            if (!await signInManager.CanSignInAsync(user))
             {
                 return Forbid(
                     authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -536,11 +530,11 @@ public class AuthorizationController : Controller
 
             // Override the user claims present in the principal in case they
             // changed since the authorization code/refresh token was issued.
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+            identity.SetClaim(Claims.Subject, await userManager.GetUserIdAsync(user))
+                    .SetClaim(Claims.Email, await userManager.GetEmailAsync(user))
+                    .SetClaim(Claims.Name, await userManager.GetUserNameAsync(user))
+                    .SetClaim(Claims.PreferredUsername, await userManager.GetUserNameAsync(user))
+                    .SetClaims(Claims.Role, (await userManager.GetRolesAsync(user)).ToImmutableArray());
 
             identity.SetDestinations(GetDestinations);
 

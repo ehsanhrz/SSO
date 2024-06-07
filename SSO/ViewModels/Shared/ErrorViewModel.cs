@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Shared;
+namespace SSO.ViewModels.Shared;
 
 public class ErrorViewModel
 {

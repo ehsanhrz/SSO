@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Account;
+using SSO.ViewModels.Account;
 using SSO.Infrastructure.Database;
 using SSO.Infrastructure.Database.Models;
 using SSO.Infrastructure.Services.EmailService;

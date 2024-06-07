@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Authorization;
+namespace SSO.ViewModels.Authorization;
 
 public class AuthorizeViewModel
 {

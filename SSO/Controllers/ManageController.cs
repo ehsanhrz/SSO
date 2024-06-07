@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Sandbox.AspNetCore.Server.Models;
-using OpenIddict.Sandbox.AspNetCore.Server.Services;
-using OpenIddict.Sandbox.AspNetCore.Server.ViewModels.Manage;
+using SSO.ViewModels.Manage;
+using SSO.Infrastructure.Database.Models;
+using SSO.Infrastructure.Services.EmailService;
+using SSO.Infrastructure.Services.SmsService;
 
 namespace OpenIddict.Sandbox.AspNetCore.Server.Controllers;
 
@@ -30,8 +31,6 @@ public class ManageController : Controller
         _logger = loggerFactory.CreateLogger<ManageController>();
     }
 
-    //
-    // GET: /Manage/Index
     [HttpGet]
     public async Task<IActionResult> Index(ManageMessageId? message = null)
     {
