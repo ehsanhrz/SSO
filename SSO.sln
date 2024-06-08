@@ -9,7 +9,7 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "api", "api\api.csproj", "{38100D27-5504-4A07-9666-AA37965DCD54}"
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "spa", "..\spa\spa.esproj", "{E548EEC7-167D-4783-88C2-67B1CEA13711}"
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "spa", "spa\spa.esproj", "{E548EEC7-167D-4783-88C2-67B1CEA13711}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
