@@ -36,6 +36,9 @@
   <ItemGroup>
     <Folder Include="Controllers\" />
     <Folder Include="ViewModels\" />
+    <Folder Include="wwwroot\js\" />
+    <Folder Include="wwwroot\css\" />
+    <Folder Include="wwwroot\static\" />
   </ItemGroup>
 
 </Project>
