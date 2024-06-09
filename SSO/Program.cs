@@ -1,14 +1,38 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Abstractions;
 using Quartz;
 using SSO;
 using SSO.Infrastructure.Database;
 using SSO.Infrastructure.Database.Models;
+using SSO.Utils;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.InstallAllFeatures(builder.Configuration);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngularClient", builder =>
+    {
+        builder.WithOrigins("http://127.0.0.1:4200")
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials();
+    });
+});
+
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("All", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyHeader()
+               .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddControllers();
 
@@ -28,8 +52,7 @@ builder.Services.AddQuartz(options =>
     options.UseInMemoryStore();
 });
 
-builder
-    .Services.AddOpenIddict()
+builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
         options.UseEntityFrameworkCore().UseDbContext<AppDbContext>();
@@ -40,16 +63,33 @@ builder
         options
             .UseAspNetCore()
             .EnableStatusCodePagesIntegration()
-            .EnableRedirectionEndpointPassthrough().EnablePostLogoutRedirectionEndpointPassthrough();
-            
+            .EnableRedirectionEndpointPassthrough()
+            .EnablePostLogoutRedirectionEndpointPassthrough();
+        if (builder.Environment.IsDevelopment())
+        {
+            options
+            .UseAspNetCore()
+            .EnableStatusCodePagesIntegration()
+            .EnableRedirectionEndpointPassthrough()
+            .EnablePostLogoutRedirectionEndpointPassthrough()
+            .DisableTransportSecurityRequirement();
+
+        }
+        else
+        {
+            options
+            .UseAspNetCore()
+            .EnableStatusCodePagesIntegration()
+            .EnableRedirectionEndpointPassthrough()
+            .EnablePostLogoutRedirectionEndpointPassthrough();
+        }
         options.AllowAuthorizationCodeFlow().SetRedirectionEndpointUris("/callback");
 
         options.AddDevelopmentEncryptionCertificate().AddDevelopmentSigningCertificate();
 
-        
-            
-
         options.UseSystemNetHttp().SetProductInformation(typeof(Program).Assembly);
+
+       
     })
     .AddServer(options =>
     {
@@ -69,13 +109,29 @@ builder
             .AllowPasswordFlow()
             .AllowRefreshTokenFlow();
 
-        options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);
+        options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.Roles);
 
         options.AddDevelopmentEncryptionCertificate().AddDevelopmentSigningCertificate();
 
         options.RequireProofKeyForCodeExchange();
 
-        options
+        
+
+        if (builder.Environment.IsDevelopment())
+        {
+            options
+            .UseAspNetCore()
+            .EnableStatusCodePagesIntegration()
+            .EnableAuthorizationEndpointPassthrough()
+            .EnableLogoutEndpointPassthrough()
+            .EnableTokenEndpointPassthrough()
+            .EnableUserinfoEndpointPassthrough()
+            .EnableVerificationEndpointPassthrough()
+            .DisableTransportSecurityRequirement();
+        }
+        else
+        {
+            options
             .UseAspNetCore()
             .EnableStatusCodePagesIntegration()
             .EnableAuthorizationEndpointPassthrough()
@@ -83,26 +139,25 @@ builder
             .EnableTokenEndpointPassthrough()
             .EnableUserinfoEndpointPassthrough()
             .EnableVerificationEndpointPassthrough();
+        }
     })
-    // Register the OpenIddict validation components.
     .AddValidation(options =>
     {
-        // Configure the audience accepted by this resource server.
-        // The value MUST match the audience associated with the
-        // "demo_api" scope, which is used by ResourceController.
         options.AddAudiences("resource_server");
-
-        // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
-
-        // Register the ASP.NET Core host.
         options.UseAspNetCore();
+
+        
     });
+
+
 
 builder.Services.AddHostedService<Worker>();
 
 var app = builder.Build();
 
+
+app.UseMiddleware<ExceptionMiddleware>();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -124,20 +179,18 @@ app.UseRequestLocalization(options =>
     options.SetDefaultCulture("en-US");
 });
 
+//app.UseCors("AllowAngularClient");
+app.UseCors("All");
+
 app.UseAuthentication();
 
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
 
-    endpoints.MapRazorPages();
-    endpoints.MapDefaultControllerRoute();
-    endpoints.MapControllers();
-});
+app.MapRazorPages();
+app.MapDefaultControllerRoute();
+app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {

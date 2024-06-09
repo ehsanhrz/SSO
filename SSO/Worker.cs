@@ -31,18 +31,22 @@ namespace SSO
                     {
                         ClientId = "angular_spa",
                         DisplayName = "Angular SPA",
-                        RedirectUris = { new Uri("http://localhost:4200/callback") },
-                        PostLogoutRedirectUris = { new Uri("http://localhost:4200") },
+                        RedirectUris = { new Uri("http://127.0.0.1:4200/callback") },
+                        PostLogoutRedirectUris = { new Uri("http://127.0.0.1:4200") },
                         Permissions =
                         {
+                            Permissions.Endpoints.Introspection,
                             Permissions.Endpoints.Authorization,
                             Permissions.Endpoints.Token,
                             Permissions.GrantTypes.AuthorizationCode,
+                            Permissions.GrantTypes.DeviceCode,
+                            Permissions.GrantTypes.ClientCredentials,
                             Permissions.Scopes.Email,
                             Permissions.Scopes.Profile,
                             Permissions.Scopes.Roles
                         },
-                        Requirements = { Requirements.Features.ProofKeyForCodeExchange }
+                        Requirements = { Requirements.Features.ProofKeyForCodeExchange },
+                        ConsentType = "code"
                     }
                 );
             }

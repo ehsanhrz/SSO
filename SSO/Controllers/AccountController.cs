@@ -39,7 +39,7 @@ public class AccountController : Controller
     // GET: /Account/Login
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult Login(string returnUrl = null)
+    public IActionResult Login([FromQuery(Name = "redirect_uri")] string returnUrl)
     {
         ViewData["ReturnUrl"] = returnUrl;
         return View();
@@ -453,14 +453,10 @@ public class AccountController : Controller
 
     private IActionResult RedirectToLocal(string returnUrl)
     {
-        if (Url.IsLocalUrl(returnUrl))
-        {
+        
             return Redirect(returnUrl);
-        }
-        else
-        {
-            return RedirectToAction(nameof(HomeController.Index), "Home");
-        }
+        
+        
     }
 
    
