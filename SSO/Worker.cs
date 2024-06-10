@@ -32,7 +32,7 @@ namespace SSO
                         ClientId = "angular_spa",
                         DisplayName = "Angular SPA",
                         RedirectUris = { new Uri("http://127.0.0.1:4200/callback") },
-                        PostLogoutRedirectUris = { new Uri("http://127.0.0.1:4200") },
+                        PostLogoutRedirectUris = { new Uri("http://127.0.0.1:4200/logout") },
                         Permissions =
                         {
                             Permissions.Endpoints.Introspection,
@@ -41,6 +41,7 @@ namespace SSO
                             Permissions.GrantTypes.AuthorizationCode,
                             Permissions.GrantTypes.DeviceCode,
                             Permissions.GrantTypes.ClientCredentials,
+                            Permissions.ResponseTypes.Code,
                             Permissions.Scopes.Email,
                             Permissions.Scopes.Profile,
                             Permissions.Scopes.Roles

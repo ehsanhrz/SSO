@@ -6,7 +6,6 @@ using SSO;
 using SSO.Infrastructure.Database;
 using SSO.Infrastructure.Database.Models;
 using SSO.Utils;
-using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,11 +59,7 @@ builder.Services.AddOpenIddict()
     })
     .AddClient(options =>
     {
-        options
-            .UseAspNetCore()
-            .EnableStatusCodePagesIntegration()
-            .EnableRedirectionEndpointPassthrough()
-            .EnablePostLogoutRedirectionEndpointPassthrough();
+        
         if (builder.Environment.IsDevelopment())
         {
             options
@@ -83,7 +78,9 @@ builder.Services.AddOpenIddict()
             .EnableRedirectionEndpointPassthrough()
             .EnablePostLogoutRedirectionEndpointPassthrough();
         }
-        options.AllowAuthorizationCodeFlow().SetRedirectionEndpointUris("/callback");
+        options.AllowAuthorizationCodeFlow()
+        .SetRedirectionEndpointUris("/callback")
+        .SetPostLogoutRedirectionEndpointUris("/logout");
 
         options.AddDevelopmentEncryptionCertificate().AddDevelopmentSigningCertificate();
 

@@ -8,6 +8,9 @@ using SSO.Infrastructure.Database;
 using SSO.Infrastructure.Database.Models;
 using SSO.Infrastructure.Services.EmailService;
 using SSO.Infrastructure.Services.SmsService;
+using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Net;
 
 namespace OpenIddict.Sandbox.AspNetCore.Server.Controllers;
 
@@ -39,10 +42,33 @@ public class AccountController : Controller
     // GET: /Account/Login
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult Login([FromQuery(Name = "redirect_uri")] string returnUrl)
+    public IActionResult Login([FromQuery(Name = "redirect_uri")] string redirectUrl)
     {
-        ViewData["ReturnUrl"] = returnUrl;
-        return View();
+        if (string.IsNullOrEmpty(redirectUrl))
+        {
+            var query = Request.QueryString.ToString();
+            var queryParams = QueryHelpers.ParseQuery(query);
+            StringValues nestedQuery;
+            queryParams.TryGetValue("ReturnUrl", out nestedQuery);
+            var uri = new Uri("http://dummy.com" + nestedQuery.ToString());
+            var nestedQueryParams = QueryHelpers.ParseQuery(uri.Query);
+            StringValues redirect;
+            nestedQueryParams.TryGetValue("redirect_uri", out redirect);
+            if (!string.IsNullOrEmpty(redirect))
+            {
+                ViewData["ReturnUrl"] = redirect;
+            }
+           
+            return View();
+        }
+        else
+        {
+            ViewData["ReturnUrl"] = redirectUrl;
+            return View();
+        }
+      
+        
+       
     }
 
     
