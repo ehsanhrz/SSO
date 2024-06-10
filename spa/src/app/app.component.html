@@ -1,7 +1,1 @@
-<div *ngIf="authService.isLoggedIn">
-  <h1>Welcome, {{ authService.identityClaims?.name }}</h1>
-  <button (click)="logout()">Logout</button>
-</div>
-<div *ngIf="!authService.isLoggedIn">
-  <button (click)="login()">Login</button>
-</div>
+<router-outlet></router-outlet>
